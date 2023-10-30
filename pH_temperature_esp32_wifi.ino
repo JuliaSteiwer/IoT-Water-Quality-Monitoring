@@ -3,13 +3,13 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-const char* ssid = "FRITZ!Box 7490";   // your network SSID (name) 
-const char* password = "91313742298868125947";   // your network password
+const char* ssid = ".";   // your network SSID (name) 
+const char* password = ".";   // your network password
 
 WiFiClient  client;
 
-unsigned long myChannelNumber = 1;
-const char * myWriteAPIKey = "R2W7EJV0H1H17EFL";
+unsigned long myChannelNumber = X;
+const char * myWriteAPIKey = ".";
 
 #define Offset 0.20 
 #define LED 13
