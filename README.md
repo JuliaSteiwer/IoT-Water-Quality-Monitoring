@@ -2,7 +2,9 @@
 Monitoring water quality parameters using an IoT-based system.
 
 <h2>Resources</h2>
+<h3>Tutorials</h3>
 <p>I used <a href="https://www.aeq-web.com/heltec-lora32-v3-board-arduino-ide-lorawan-setup/">this tutorial</a> by Alex from AEQ-WEB for setting up LoRa with TTN and the Heltec Lora32 V3 board.</p>
+<h3>Codes</h3>
 <p>The code for putting the board into deep sleep is based on <a href="https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series/issues/6#issuecomment-1574824770">this reply</a> by GitHub user Quency-D.</p>
 
 <h2>Acknowledgements</h2>
