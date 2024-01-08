@@ -171,7 +171,7 @@ void loop()
     case DEVICE_STATE_SLEEP:
     {
       LoRaWAN.sleep(loraWanClass);
-      #if(messageSent == true)
+      if(messageSent == true) {
         // Ignore this specific stuff for now because deep sleep of esp is the focus.
         // VextOFF();
         // Radio.Sleep();
@@ -185,7 +185,7 @@ void loop()
         // pinMode(LORA_MOSI,ANALOG);
         esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
         esp_deep_sleep_start();
-      #endif
+      }
       break;
     }
 
