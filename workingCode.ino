@@ -1,4 +1,16 @@
 /*
+-- This is the working code for all six sensors.
+-- Data is being sent via LoRaWAN to TheThingsNetwork (TTN).
+-- Sensor suite:
+    -- Temperature sensor: Dallas DS18B20 (from sensorshop24.de)
+    -- pH sensor: SEN0161 Gravity analog pH meter V1 (from dfrobot.com)
+    -- TDS sensor: SEN0244 Gravity analog TDS sensor (from dfrobot.com)
+    -- Turbidity sensor: SEN0189 Gravity analog turbidity sensor (from dfrobot.com)
+    -- EC sensor: DFR0300 Gravity analog electrical conductivity sensor V2 (K = 1) (from dfrobot.com)
+    -- DO sensor: SEN0237-A Gravity analog dissolved oxygen sensor (from dfrobot.com)
+*/
+
+/*
 * Example: Send battery voltage to TTN 
 * tested with HELTEC WiFi LoRa 32(V3):
 *     power consumption when sleeping: 0.019 mA
