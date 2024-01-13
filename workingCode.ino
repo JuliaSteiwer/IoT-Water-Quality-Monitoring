@@ -1,5 +1,5 @@
 /*
--- This is the working code for all six sensors.
+-- This is the working code for all six sensors (except EC there's still a bug somewhere).
 -- Data is being sent via LoRaWAN to TheThingsNetwork (TTN).
 -- Sensor suite:
     -- Temperature sensor: Dallas DS18B20 (from sensorshop24.de)
