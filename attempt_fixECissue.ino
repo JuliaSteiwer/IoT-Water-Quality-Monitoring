@@ -268,7 +268,7 @@ static void prepareTxFrame( uint8_t port)
   // EC VALUE
   //ec.begin();
   ecVoltage = analogRead(EC_PIN)/1024.0*5000;
-  float rawEC = 1000*voltage/RES2/ECREF;
+  float rawEC = 1000*ecVoltage/RES2/ECREF;
   float valueTemp = rawEC * kvalue; // 1.0 is the k-value (K = 1)
   if(valueTemp > 2.5){
     kvalue = 0.996;
