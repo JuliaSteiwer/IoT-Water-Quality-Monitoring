@@ -146,12 +146,12 @@ uint8_t appEui[] = {  };
 uint8_t appKey[] = {  }; // put your appKey here
 
 /* ABP para, not used in this case*/
-uint8_t nwkSKey[] = {  };
-uint8_t appSKey[] = { };
-uint32_t devAddr =  ( uint32_t );
+uint8_t nwkSKey[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+uint8_t appSKey[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint32_t devAddr =  ( uint32_t )0x00000000;
 
 /*LoraWan channelsmask*/
-uint16_t userChannelsMask[6]={  };
+uint16_t userChannelsMask[6]={ 0x00FF,0x0000,0x0000,0x0000,0x0000,0x0000 };
 
 /*LoraWan region, select in arduino IDE tools*/
 LoRaMacRegion_t loraWanRegion = ACTIVE_REGION;
@@ -160,7 +160,7 @@ LoRaMacRegion_t loraWanRegion = ACTIVE_REGION;
 DeviceClass_t  loraWanClass = CLASS_A;
 
 /*the application data transmission duty cycle.  value in [ms].*/
-uint32_t appTxDutyCycle = 60000;  // 1 minute
+uint32_t appTxDutyCycle = 300000;  // 1 minute
 
 /*OTAA or ABP*/
 bool overTheAirActivation = true;
