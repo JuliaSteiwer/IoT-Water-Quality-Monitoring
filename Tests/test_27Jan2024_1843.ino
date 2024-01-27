@@ -2,7 +2,7 @@
 // No sensors connected.
 // Currently powered via USB cable.
 // Set isTxConfirmed = false
-// Ve pins are activated and working (3.3V power supply for sensors)
+// Ve pins are activated and working (3.3V power supply for sensors) 
 
 #include "LoRaWan_APP.h"
 
