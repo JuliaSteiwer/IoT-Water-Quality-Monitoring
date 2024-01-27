@@ -3,7 +3,7 @@
 // -- DS18B20 temperature sensor. -> data is being send, the values are correct
 // -- pH Sensor
 // Currently powered via USB cable.
-// Set isTxConfirmed = false
+// Set isTxConfirmed = false 
 // Removed Vext as the sending interval was irregular. 
 
 #include "LoRaWan_APP.h"
