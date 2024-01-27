@@ -3,7 +3,7 @@
 // Currently powered via USB cable.
 // Set isTxConfirmed = false
 // Q: If the DutyCycle has to be 1 minute because the Fair Use Policy rejoin time of TTN is 3 minutes,
-//    then how do I make sure that data is only sent every 30 minutes or every hour?
+//    then how do I make sure that data is only sent every 30 minutes or every hour? 
 
 #include "LoRaWan_APP.h"
 
