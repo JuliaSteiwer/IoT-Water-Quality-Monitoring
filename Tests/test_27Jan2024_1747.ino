@@ -1,7 +1,7 @@
 // Sends data to TTN every minute. Goes into deep sleep when not sending.
 // Sensors connected:
 // -- DS18B20 temperature sensor → data is send properly
-// Currently powered via USB cable.
+// Currently powered via USB cable. 
 // Set isTxConfirmed = false
 
 #include "LoRaWan_APP.h"
