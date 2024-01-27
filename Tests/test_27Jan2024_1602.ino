@@ -1,6 +1,6 @@
 // Sends data to TTN every minute. Goes into deep sleep when not sending.
 // No sensors connected. Using static data.
-// Currently powered via USB cable.
+// Currently powered via USB cable. 
 
 #include "LoRaWan_APP.h"
 
