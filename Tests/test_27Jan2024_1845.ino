@@ -2,7 +2,7 @@
 //Sensors connected:
 // -- DS18B20 temperature sensor. -> data is being send, the values are correct
 // Currently powered via USB cable.
-// Set isTxConfirmed = false
+// Set isTxConfirmed = false 
 // Ve pins are activated and working (3.3V power supply for sensors) 
 
 #include "LoRaWan_APP.h"
