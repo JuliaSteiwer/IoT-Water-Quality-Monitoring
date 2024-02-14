@@ -1,63 +1,58 @@
-/*
--- This is the working code for all six sensors (except EC there's still a bug somewhere).
--- Data is being sent via LoRaWAN to TheThingsNetwork (TTN).
--- Sensor suite:
-    -- Temperature sensor: Dallas DS18B20 (from sensorshop24.de)
-    -- pH sensor: SEN0161 Gravity analog pH meter V1 (from dfrobot.com)
-    -- TDS sensor: SEN0244 Gravity analog TDS sensor (from dfrobot.com)
-    -- Turbidity sensor: SEN0189 Gravity analog turbidity sensor (from dfrobot.com)
-    -- EC sensor: DFR0300 Gravity analog electrical conductivity sensor V2 (K = 1) (from dfrobot.com)
-    -- DO sensor: SEN0237-A Gravity analog dissolved oxygen sensor (from dfrobot.com)
-*/
+// This is the working code.
+// Sends data every hour without re-joins.
+// Sensors: temperature, pH, TDS, EC, DO, turbidity
+// Enable pin turns off sensors during deep sleep.
 
-/*
-* Example: Send battery voltage to TTN 
-* tested with HELTEC WiFi LoRa 32(V3):
-*     power consumption when sleeping: 0.019 mA
-* tested with HELTEC Wireless Stick(V3):
-*     power consumption when sleeping: 0.019 mA
-*
-* put your devEui and appKey in lines 80 and 82 !
-*/
-#include "Arduino.h"
-#include <Wire.h>         
-#include "HT_SSD1306Wire.h"
-#include <LoRaWan_APP.h>
-#include <CayenneLPP.h>
-// sensor specific libraries
+#include "LoRaWan_APP.h"
+// temperature libraries
 #include <OneWire.h>
-#include <DallasTemperature.h> // DS18B20 library
-//#include "DFRobot_EC.h"
+#include <DallasTemperature.h>
+// ec library
 #include <EEPROM.h>
 
-// SENSOR DEFINITIONS
-// -- Temperature
-#define ONE_WIRE_BUS 7 // data wire is plugged to GPIO7
-#define T 273.15               // degrees Kelvin
-#define Alpha 0.05916          // alpha
-// -- pH Value
+// Enable Pin
+#define VReg 47
+
+// TEMPERATURE SENSOR
+#define ONE_WIRE_BUS 7 // pin where the data wire is plugged into
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+// PH SENSOR
+#define T 273.15               // degrees Kelvin → for temperature correction
+#define Alpha 0.05916          // alpha → for temperature correction
 #define Offset 0.10 
 #define LED 13
-// -- TDS Value
+const int phPin = 6; // reading the analog value via pin GPIO6
+float ph;
+float Value = 0;
+float pHvoltage, pHcorr; // define params for temperature-based pH correction
+
+// TDS SENSOR
 #define tdsPin 5
-// -- EC
+int tdsSensorValue = 0;
+float tdsValue = 0;
+float tdsVoltage = 0;
+
+// EC SENSOR
 #define EC_PIN 4
 #define RES2 820.0
 #define ECREF 200.0
-// -- DO
+float ecVoltage,ecValue;
+float kvalue = 0.996;
+
+// DO SENSOR
 #define DO_PIN 3
 #define VREF 5000    //VREF (mv)
 #define ADC_RES 4096 //ADC Resolution
 #define TWO_POINT_CALIBRATION 1
 //Single point calibration needs to be filled CAL1_V and CAL1_T
-#define CAL1_V (670) //mv
-#define CAL1_T (8)   //℃
+#define CAL1_V (670) // mV
+#define CAL1_T (8)   // °C
 //Two-point calibration needs to be filled CAL2_V and CAL2_T
 //CAL1 High temperature point, CAL2 Low temperature point
-#define CAL2_V (1310) //mv
-#define CAL2_T (24)   //℃
-// -- Turbidity
-#define TU_PIN 2
+#define CAL2_V (1310) // mV
+#define CAL2_T (24)   // °C
 
 const uint16_t DO_Table[41] = {
     14460, 14220, 13820, 13440, 13090, 12740, 12420, 12110, 11810, 11530,
@@ -80,77 +75,22 @@ int16_t readDO(uint32_t voltage_mv, uint8_t temperature_c)
   return (voltage_mv * DO_Table[temperature_c] / V_saturation);
 #endif
 }
-// -- end sensor definitions
 
-//#define TRACE         // print debugging information
-#ifdef TRACE
-  uint32_t loop_counter;
-#endif
-
-#define MAXTIMETTNLOOP 180000     // after MAXTIMETTNLOOP milliseconds, it is assumed that the TTN connection was unsuccessful.
-uint32_t startloopTTN;            // millis() at which loop_TTN() was started
-
-//-------------------------------------------------------------------------------------------------------------------
-//--  Display -- Display -- Display -- Display -- Display -- Display -- Display -- Display -- Display -- Display   --
-//-------------------------------------------------------------------------------------------------------------------
-extern SSD1306Wire display; // use display defined in LoRaWan_APP.h
-
-void VextON(void)
-{
-  pinMode(Vext,OUTPUT);
-  digitalWrite(Vext, LOW);
-}
-
-void VextOFF(void) //Vext default OFF
-{
-  pinMode(Vext,OUTPUT);
-  digitalWrite(Vext, HIGH);
-}
-
-//-------------------------------------------------------------------------------------------------------------------
-//-- check battery level -- check battery level -- check battery level -- check battery level -- check battery level 
-//-------------------------------------------------------------------------------------------------------------------
-#define Read_VBAT_Voltage   1
-#define ADC_CTRL           37
-#define ADC_READ_STABILIZE 10       // in ms (delay from GPIO control and ADC connections times)
-
-float readBatLevel() {
-    #ifdef TRACE
-      Serial.println("readBatLevel");
-    #endif
-    
-    pinMode(ADC_CTRL,OUTPUT);
-    digitalWrite(ADC_CTRL, LOW);                
-    delay(ADC_READ_STABILIZE);                  // let GPIO stabilize
-    int analogValue = analogRead(Read_VBAT_Voltage);
-
-    #ifdef TRACE
-      Serial.println("BatLevel = " + String(analogValue));
-    #endif
-
-    float voltage = 0.00403532794741887 * analogValue;
-    #ifdef TRACE
-      Serial.println("Voltage = " + String(voltage));
-    #endif
-    
-    return voltage;
-}
-
-//-------------------------------------------------------------------------------------------------------------------
-//-- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN -- TTN ----------
-//-------------------------------------------------------------------------------------------------------------------
+// TURBIDITY SENSOR
+#define TU_PIN 2
+float ntu;
 
 /* OTAA para*/
 uint8_t devEui[] = {  }; // put your devEui here
 uint8_t appEui[] = {  };
-uint8_t appKey[] = {  }; // put your appKey here
+uint8_t appKey[] = {  };
 
-/* ABP para, not used in this case*/
-uint8_t nwkSKey[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-uint8_t appSKey[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-uint32_t devAddr =  ( uint32_t )0x00000000;
+/* ABP para*/
+uint8_t nwkSKey[] = {  };
+uint8_t appSKey[] = {  };
+uint32_t devAddr =  ( uint32_t );
 
-/*LoraWan channelsmask*/
+/*LoraWan channelsmask, default channels 0-7*/ 
 uint16_t userChannelsMask[6]={ 0x00FF,0x0000,0x0000,0x0000,0x0000,0x0000 };
 
 /*LoraWan region, select in arduino IDE tools*/
@@ -160,7 +100,7 @@ LoRaMacRegion_t loraWanRegion = ACTIVE_REGION;
 DeviceClass_t  loraWanClass = CLASS_A;
 
 /*the application data transmission duty cycle.  value in [ms].*/
-uint32_t appTxDutyCycle = 300000;  // 1 minute
+uint32_t appTxDutyCycle = 3600000; // 3600000 = 1 hour
 
 /*OTAA or ABP*/
 bool overTheAirActivation = true;
@@ -169,7 +109,7 @@ bool overTheAirActivation = true;
 bool loraWanAdr = true;
 
 /* Indicates if the node is sending confirmed or unconfirmed messages */
-bool isTxConfirmed = true;
+bool isTxConfirmed = false;
 
 /* Application port */
 uint8_t appPort = 2;
@@ -193,42 +133,10 @@ uint8_t appPort = 2;
 * Note, that if NbTrials is set to 1 or 2, the MAC will not decrease
 * the datarate, in case the LoRaMAC layer did not receive an acknowledgment
 */
-uint8_t confirmedNbTrials = 8;
+uint8_t confirmedNbTrials = 4;
 
-// DEFINE SENSOR VARIABLES
-// -- Temperature
-// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
-OneWire oneWire(ONE_WIRE_BUS);
-// Pass our oneWire reference to Dallas Temperature. 
-DallasTemperature sensors(&oneWire);
-
-// -- pH Value
-// int pHArray[ArrayLenth];   //Store the average value of the sensor feedback
-// int pHArrayIndex=0;
-const int phPin=6; // reading the analog value via pin GPIO6
-float ph;
-float Value=0;
-// define params for temperature-based pH correction
-float pHvoltage, pHcorr;
-
-// -- TDS Value
-int tdsSensorValue = 0;
-float tdsValue = 0;
-float tdsVoltage = 0;
-
-// -- EC
-float ecVoltage,ecValue;
-//DFRobot_EC ec;
-float kvalue = 0.996;
-
-// -- turbidity
-float ntu;
-// -- end sensor variable definitions
-
-//-------------------------------------------------------------------------------------------------------------------
-//-- prepareTxFrame -- prepareTxFrame -- prepareTxFrame -- prepareTxFrame -- prepareTxFrame -- prepareTxFrame -------
-//-------------------------------------------------------------------------------------------------------------------
-static void prepareTxFrame( uint8_t port)
+/* Prepares the payload of the frame */
+static void prepareTxFrame( uint8_t port )
 {
   /*appData size is LORAWAN_APP_DATA_MAX_SIZE which is defined in "commissioning.h".
   *appDataSize max value is LORAWAN_APP_DATA_MAX_SIZE.
@@ -237,23 +145,7 @@ static void prepareTxFrame( uint8_t port)
   *for example, if use REGION_CN470, 
   *the max value for different DR can be found in MaxPayloadOfDatarateCN470 refer to DataratesCN470 and BandwidthsCN470 in "RegionCN470.h".
   */
-  CayenneLPP lpp(51);
-  lpp.reset();
 
-  int last_rssi = 0;
-  int last_snr = 0;
-
-  // void addGPS(uint8_t channel, float latitude, float longitude, int32_t altitude);
-  // channel: The channel number to associate with this GPS data.
-  // latitude: The latitude value in decimal degrees.
-  // longitude: The longitude value in decimal degrees.
-  // altitude: The altitude value in centimeters. This parameter represents the height above the sea level.
-  lpp.addAnalogInput(1, readBatLevel()); // Channel 1: Voltage of LiPo
-
-  appDataSize = lpp.getSize();
-  memcpy(appData, lpp.getBuffer(), appDataSize);
-
-  // Sensor stuff goes here
   // TEMPERATURE
   sensors.begin(); // start up the sensor library
   sensors.requestTemperatures(); // Send the command to get temperatures
@@ -262,23 +154,23 @@ static void prepareTxFrame( uint8_t port)
   // PH VALUE
   pinMode(phPin,INPUT); // get the pH output
   static float pHValue,voltage;
-
   Value = analogRead(phPin);
   voltage = Value * (5.0/6144.0); // 6306.0; 4095.0
-  //pHValue = 3.3*voltage+Offset;
   pHValue = 3.5*voltage;
   pHvoltage = voltage / 327.68;
   pHcorr = pHValue - Alpha * (T + tempC) * pHvoltage; 
 
   // TDS VALUE
   tdsSensorValue = analogRead(tdsPin);
-  tdsVoltage = tdsSensorValue*(5.0/4096.0); //Convert analog reading to Voltage
+  //Serial.println(tdsSensorValue);
+  //tdsVoltage = tdsSensorValue*(5.0/4096.0); //Convert analog reading to Voltage
+  tdsVoltage = tdsSensorValue*(5.0/7146.0);
+  //Serial.println(tdsVoltage);
   float compensationCoefficient=1.0+0.02*(tempC-25.0);    //temperature compensation formula: fFinalResult(25^C) = fFinalResult(current)/(1.0+0.02*(fTP-25.0));
   float compVoltage=tdsVoltage/compensationCoefficient;
   tdsValue=(133.42/compVoltage*compVoltage*compVoltage - 255.86*compVoltage*compVoltage + 857.39*compVoltage)*0.5;
 
   // EC VALUE
-  //ec.begin();
   ecVoltage = analogRead(EC_PIN)/1024.0*5000;
   float rawEC = 1000*ecVoltage/RES2/ECREF;
   float valueTemp = rawEC * kvalue; // 1.0 is the k-value (K = 1)
@@ -290,8 +182,6 @@ static void prepareTxFrame( uint8_t port)
   float value = rawEC * kvalue;             //calculate the EC value after automatic shift
   value = value / (1.0+0.0185*(tempC-25.0));  //temperature compensation
   float ecValue = value;
-  //ecValue =  ec.readEC(ecVoltage,tempC);
-  // Serial.println(ecValue,2);
 
   // DO VALUE
   Temperaturet = tempC;
@@ -302,14 +192,28 @@ static void prepareTxFrame( uint8_t port)
 
   // TURBIDITY
   int sensorValue = analogRead(TU_PIN);
-  float tb_voltage = sensorValue * (5.0 / 1024.0); // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
-  float multiplier = powf( 10.0f, 2 );
-  tb_voltage = roundf( tb_voltage * multiplier ) / multiplier;
+  Serial.println(sensorValue);
+  //float tb_voltage = sensorValue * (5.0 / 1024.0); // Convert the analog reading (which goes from 0 - 1023) to a voltage (0 - 5V):
+  float tb_voltage = sensorValue * (5.0 / 5534.0);
+  //Serial.println(tb_voltage);
+  //float multiplier = powf( 10.0f, 2 );
+  //tb_voltage = roundf( tb_voltage * multiplier ) / multiplier;
+  float multi = 100.0;
+  tb_voltage = (tb_voltage * multi) / multi;
   if(tb_voltage < 2.5){
     ntu = 3000;
   }else{
-    ntu = -1120.4*(tb_voltage*tb_voltage)+ 5742.3*tb_voltage - 4352.9; 
+    //ntu = -1120.4*(tb_voltage*tb_voltage)+ 5742.3*tb_voltage - 4352.9; 
+    // neue Gleichung: 4298 + -139x + -260x^2
+    ntu = 4298.0 - 139.0 * tb_voltage - 260.0 * (tb_voltage * tb_voltage);
   }
+
+  //float tempC = 17.33;
+  //float pHcorr = 7.02;
+  //float tdsValue = 376.58;
+  //float ecValue = 137.31;
+  //float DO = 6.18;
+  //float ntu = 498.84;
 
   // INTEGER CONVERSIONS
   int int_temp = tempC * 100; //remove comma
@@ -333,169 +237,61 @@ static void prepareTxFrame( uint8_t port)
   appData[9] = int_do;
   appData[10] = int_ntu >> 8;
   appData[11] = int_ntu;
-  // end sensor stuff
-
-  #ifdef TRACE
-    Serial.println("appDataSize = " + String(appDataSize));
-    Serial.println();
-  #endif  
 }
 
-//-------------------------------------------------------------------------------------------------------------------
-//-- loop_TTN --  loop_TTN -- loop_TTN -- loop_TTN -- loop_TTN -- loop_TTN -- loop_TTN -- loop_TTN -- loop_TTN ------
-//-------------------------------------------------------------------------------------------------------------------
-void loop_TTN()
-{
-  #ifdef TRACE
-    Serial.println("ttn_loop " + String(loop_counter++));    
-  #endif
-  
-  switch( deviceState )
-    {
-      case DEVICE_STATE_INIT:
-      {
-        #ifdef TRACE
-          Serial.println("DEVICE_STATE_INIT");    
-        #endif
+//if true, next uplink will add MOTE_MAC_DEVICE_TIME_REQ 
 
-        extern bool IsLoRaMacNetworkJoined; // enforce new join to TTN
-        IsLoRaMacNetworkJoined = false;
-
-        LoRaWAN.init(loraWanClass,loraWanRegion);
-        break;
-      }
-      case DEVICE_STATE_JOIN:
-      {
-        #ifdef TRACE
-          Serial.println("DEVICE_STATE_JOIN");    
-        #endif
-
-        display.clear();
-        display.drawString(0,10,"join-TTN");
-        display.display();
-      
-        LoRaWAN.join();
-
-        #ifdef TRACE
-          Serial.println("DEVICE_STATE_JOIN end");    
-        #endif
-        
-        break;
-      }
-      case DEVICE_STATE_SEND:
-      {
-        #ifdef TRACE
-          Serial.println("DEVICE_STATE_SEND");    
-        #endif
-
-        display.clear();
-        display.drawString(0,10, "send-TTN");
-        display.display();
-
-        prepareTxFrame(appPort);
-        LoRaWAN.send();
-        deviceState = DEVICE_STATE_CYCLE;
-        break;
-      }
-      case DEVICE_STATE_CYCLE:
-      {
-        // Schedule next packet transmission    
-        #ifdef TRACE
-          Serial.println("DEVICE_STATE_CYCLE");    
-        #endif
-
-        txDutyCycleTime = appTxDutyCycle + randr( 0, APP_TX_DUTYCYCLE_RND );
-        LoRaWAN.cycle(txDutyCycleTime);
-        
-        #ifdef TRACE
-          Serial.println("txDutyCycleTime = " + String(txDutyCycleTime));    
-        #endif
-        
-        deviceState = DEVICE_STATE_SLEEP;
-        break;          
-      }
-      case DEVICE_STATE_SLEEP:
-      { 
-        extern uint8_t ifDisplayAck;  // ifDisplayAck is defined in LoRaWan_APP.h stack
-                                      // it indicates the transmission has been completed
-        
-        LoRaWAN.sleep(loraWanClass);
-
-        #ifdef TRACE
-          Serial.println("DEVICE_STATE_SLEEP, ifDisplayAck = " + String(ifDisplayAck));    
-        #endif
-
-        if (ifDisplayAck == 1) // message has been sent out
-        {
-          LoRaWAN.displayAck();
-          extern int revrssi, revsnr; //indication of signal strength, defined in LoRaWan_APP.h stack 
-
-          #ifdef TRACE
-            Serial.println("rssi = " + String(revrssi) + ", snr = " + String(revsnr));    
-          #endif
-        }
-
-        break;
-      }
-      default:
-      {
-        #ifdef TRACE
-          Serial.println("default");    
-        #endif
-
-        deviceState = DEVICE_STATE_INIT;
-        break;
-      }
-    }
-}
-
-//-------------------------------------------------------------------------------------------------------------------
-//-- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -- Setup -------
-//-------------------------------------------------------------------------------------------------------------------
 void setup() {
-  // initialize OLED
-  VextON();
-  delay(100);
-  display.init();
-  display.setFont(ArialMT_Plain_16);
-
-  //start serial interface
   Serial.begin(115200);
-  Serial.println("Start");
-
-  // initialize OLED display
-  display.init();
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
-
-  // prepare LoRaWAN
+  
+  pinMode(VReg, OUTPUT);
+  digitalWrite(VReg, HIGH);   // turn the LED on (HIGH is the voltage level)
+  
   Mcu.begin();
   deviceState = DEVICE_STATE_INIT;
-
-  startloopTTN = millis();
-
-  #ifdef TRACE
-    loop_counter = 1;
-  #endif
-
-  Serial.println("Setup fertig");
 }
 
-//-------------------------------------------------------------------------------------------------------------------
-//-- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop -- loop ---
-//-------------------------------------------------------------------------------------------------------------------
-void loop() {
-  // very rarely does the TTN connection go into a stale status and requires a restart
-  // we assume this after MAXTIMETTNLOOP milliseconds
-  if((millis() - startloopTTN) > MAXTIMETTNLOOP) 
+void loop()
+{
+  switch( deviceState )
   {
-    Serial.println();
-    Serial.println("XXX     it is assumed that the TTN connection was unsuccessful        XXX");
-    Serial.println();
-
-    ESP.restart();
+    case DEVICE_STATE_INIT:
+    {
+#if(LORAWAN_DEVEUI_AUTO)
+      LoRaWAN.generateDeveuiByChipID();
+#endif
+      LoRaWAN.init(loraWanClass,loraWanRegion);
+      break;
+    }
+    case DEVICE_STATE_JOIN:
+    {
+      LoRaWAN.join();
+      break;
+    }
+    case DEVICE_STATE_SEND:
+    {
+      prepareTxFrame( appPort );
+      LoRaWAN.send();
+      deviceState = DEVICE_STATE_CYCLE;
+      break;
+    }
+    case DEVICE_STATE_CYCLE:
+    {
+      // Schedule next packet transmission
+      txDutyCycleTime = appTxDutyCycle + randr( -APP_TX_DUTYCYCLE_RND, APP_TX_DUTYCYCLE_RND );
+      LoRaWAN.cycle(txDutyCycleTime);
+      deviceState = DEVICE_STATE_SLEEP;
+      break;
+    }
+    case DEVICE_STATE_SLEEP:
+    {
+      LoRaWAN.sleep(loraWanClass);
+      break;
+    }
+    default:
+    {
+      deviceState = DEVICE_STATE_INIT;
+      break;
+    }
   }
-
-  loop_TTN();
 }
