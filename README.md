@@ -1,6 +1,10 @@
 # IoT-Water-Quality-Monitoring
 Monitoring water quality parameters using an IoT-based system.
 
+<h2>Publications</h2>
+[!NOTE]
+<p>My papers, posters etc. corresponding to this project will be uploaded in the Publications folder. As soon as one of these is published "officially", e.g. in a journal or ipen access site, I will also put the proper citation with the DOI here.</p>
+
 <h2>Resources</h2>
 <h3>Tutorials</h3>
 <p>I used <a href="https://www.aeq-web.com/heltec-lora32-v3-board-arduino-ide-lorawan-setup/">this tutorial</a> by Alex from AEQ-WEB for setting up LoRa with TTN and the Heltec Lora32 V3 board.</p>
