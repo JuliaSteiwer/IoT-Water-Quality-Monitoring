@@ -9,12 +9,12 @@ function decodeUplink(input) {
   
     return {
       data: {
-        field1: temp/100,
-        field2: ph/100,
-        field3: tds/100,
-        field4: ec/100,
-        field5: do_val/100,
-        field6: turb/100
+        Temperature: temp/100,
+        pH: ph/100,
+        Total_Dissolved_Solids: tds/100,
+        Electrical_Conductivity: ec/100,
+        Dissolved_Oxygen: do_val/100,
+        Turbidity: turb/100
       }
     };
 }
