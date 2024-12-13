@@ -4,7 +4,7 @@ Monitoring water quality parameters using an IoT-based system.
 <h2>Publications</h2>
 
 > [!NOTE]
-> My papers, posters etc. corresponding to this project will be uploaded in the Publications folder. As soon as one of them is published "officially", e.g. in a journal or ipen access site, I will also put the proper citation with the DOI here.
+> My papers, posters etc. corresponding to this project will be uploaded in the Publications folder. As soon as one of them is published "officially", e.g. in a journal or open access site, I will also put the proper citation with the DOI here.
 
 <h2>Resources</h2>
 <h3>Tutorials</h3>
