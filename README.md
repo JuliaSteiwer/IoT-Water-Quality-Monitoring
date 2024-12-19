@@ -27,5 +27,13 @@ Monitoring water quality parameters using an IoT-based system.
   <li>SparkFun Sunny Buddy - MPPT Solar Charger (<a href="https://www.sparkfun.com/products/12885">here</a>)</li>
 </ul>
 
+<p>Further sensors that could enhance the system are:</p>
+<ul>
+  <li>BME280: Sensor for humidity, temperature, and air pressure. Useful inside of the sensor box to monitor if the electronics remain dry and in working temperature range.</li>
+  <li>Flow meter to assess the river flow rate, useful to contextualize the other water parameters, especially for modeling purposes.</li>
+  <li>Rainfall sensor to assess influences on flow rate.</li>
+  <li>Water level sensor, both to contextualize the other parameters and for flood or drought warning purposes.</li>
+</ul>
+
 <h2>Acknowledgements</h2>
 <p>Thanks to Steven Boonstoppel (@bns), Nick McCloud (@nmcc), and users @dstacer and @ksjh from the Heltec community for their help, feedback, and general input (threads <a href="http://community.heltec.cn/t/connecting-multiple-sensors-to-heltec-lora-v3-board-and-sending-the-data-to-thingspeak/14329">here</a> and <a href="http://community.heltec.cn/t/wifi-lora-32-v3-send-sensor-data-via-lora-then-go-back-to-deep-sleep/14392">here</a>).</p>
