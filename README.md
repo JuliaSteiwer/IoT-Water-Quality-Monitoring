@@ -27,6 +27,9 @@ Monitoring water quality parameters using an IoT-based system.
   <li>SparkFun Sunny Buddy - MPPT Solar Charger (<a href="https://www.sparkfun.com/products/12885">here</a>)</li>
 </ul>
 
+> [!WARNING]
+> The working code and the schematic are written with the use of the above hardware in mind. If you use other hardware, you will have to change the code and the wiring, otherwise, errors and false readings will occur!
+
 <p>Further sensors that could enhance the system are:</p>
 <ul>
   <li>BME280: Sensor for humidity, temperature, and air pressure. Useful inside of the sensor box to monitor if the electronics remain dry and in working temperature range.</li>
