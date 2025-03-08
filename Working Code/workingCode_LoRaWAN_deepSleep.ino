@@ -1,6 +1,7 @@
 
 /*
-ORIGINAL COMMENT FROM RADIOLIB PERSISTENCE EXAMPLE
+
+ORIGINAL COMMENT FROM RADIOLIB PERSISTENCE DEEP SLEEP EXAMPLE
 
 This demonstrates how to save the join information in to permanent memory
 so that if the power fails, batteries run out or are changed, the rejoin
@@ -37,7 +38,7 @@ Preferences store;
 #include <RadioLib.h>
 
 // SENSOR LIBRARIES
-// -- temperature
+// temperature libraries
 #include <OneWire.h>
 #include <DallasTemperature.h>
 // -- electrical conductivity (EC)
@@ -48,19 +49,19 @@ Preferences store;
 
 // SENSOR DEFINITIONS
 // -- Temperature
-#define ONE_WIRE_BUS 7         // pin where the data wire is plugged into
+#define ONE_WIRE_BUS 7 // pin where the data wire is plugged into
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 // -- pH Value
 #define T 273.15               // degrees Kelvin → for temperature correction
 #define Alpha 0.05916          // alpha → for temperature correction
-#define Offset 1.37            // calibrate sensor first, that sets the Offset value
+#define Offset 1.37
 #define LED 13
-const int phPin = 6;           // reading the analog value via pin GPIO6
+const int phPin = 6; // reading the analog value via pin GPIO6
 float ph;
 float Value = 0;
-float pHvoltage, pHcorr;        // define parameters for temperature-based pH correction
+float pHvoltage, pHcorr; // define params for temperature-based pH correction
 
 // -- total dissolved solids (TDS)
 #define tdsPin 5
@@ -73,20 +74,20 @@ float tdsVoltage = 0;
 #define RES2 820.0
 #define ECREF 200.0
 float ecVoltage,ecValue;
-float kvalue = 0.65;             // was 0.996 (sensor calibration gives you this value)
+float kvalue = 0.65; // war 0.996, jetzt nur noch 0.65 bzw. 0.8
 
 // -- dissolved oxygen (DO)
 #define DO_PIN 3
-#define VREF 3300                //VREF (mv)
-#define ADC_RES 4096             //ADC Resolution
+#define VREF 5000    //VREF (mv)
+#define ADC_RES 4096 //ADC Resolution
 #define TWO_POINT_CALIBRATION 1
 //Single point calibration needs to be filled CAL1_V and CAL1_T
-#define CAL1_V (1400)            // mV
-#define CAL1_T (27.81)           // °C
-//Two-point calibration needs to be filled CAL2_V and CAL2_T (make sure to calibrate sensor first!)
+#define CAL1_V (670) // mV
+#define CAL1_T (8)   // °C
+//Two-point calibration needs to be filled CAL2_V and CAL2_T
 //CAL1 High temperature point, CAL2 Low temperature point
-#define CAL2_V (1160)            // mV
-#define CAL2_T (15.69)           // °C
+#define CAL2_V (1310) // mV
+#define CAL2_T (24)   // °C
 
 const uint16_t DO_Table[41] = {
     14460, 14220, 13820, 13440, 13090, 12740, 12420, 12110, 11810, 11530,
@@ -155,8 +156,7 @@ int16_t lwActivate() {
   int16_t state = RADIOLIB_ERR_UNKNOWN;
 
   // setup the OTAA session information
-  // node.beginOTAA(joinEUI, devEUI, nwkKey, appKey); // original
-  node.beginOTAA(joinEUI, devEUI, NULL, appKey); // set nwkKey to NULL because we're using LoRaWAN 1.0.4
+  node.beginOTAA(joinEUI, devEUI, NULL, appKey);
 
   Serial.println(F("Recalling LoRaWAN nonces & session"));
   // ##### setup the flash storage
@@ -242,11 +242,10 @@ int16_t lwActivate() {
 void setup() {
   Serial.begin(115200);
 
-  // enable pin stuff
   pinMode(VReg, OUTPUT);
   digitalWrite(VReg, HIGH);   // turn the LED on (HIGH is the voltage level)
 
-  while (!Serial);  							// wait for serial to be initalised
+  // while (!Serial);  							// wait for serial to be initalised // commented out because no serial
   delay(2000);  									// give time to switch to the serial monitor
   Serial.println(F("\nSetup"));
   print_wakeup_reason();
@@ -267,15 +266,15 @@ void setup() {
 
   // this is the place to gather the sensor inputs
   // instead of reading any real sensor, we just generate some random numbers as example
-  // uint8_t value1 = radio.random(100);
-  // uint16_t value2 = radio.random(2000);
-
+  //uint8_t value1 = radio.random(100);
+  //uint16_t value2 = radio.random(2000);
+  
   // SENSOR INPUTS
   // -- DS18B20 Temperature
   sensors.begin(); // start up the sensor library
   sensors.requestTemperatures(); // Send the command to get temperatures
   float tempC = sensors.getTempCByIndex(0); // there's only one temperature sensor so we can index to it
-  
+
   // -- pH
   pinMode(phPin,INPUT); // get the pH output
   static float pHValue,voltage;
@@ -284,23 +283,23 @@ void setup() {
   pHValue = 3.5*voltage;
   pHvoltage = voltage / 327.68;
   pHcorr = pHValue - Alpha * (T + tempC) * pHvoltage;
-  
+
   // -- total dissolved solids
-  // all put here because #include "GravityTDS.h" only works with Arduino UNO and not with ESP32
+  // Steht hier alles drin weil #include "GravityTDS.h" nur mit Arduino UNO nicht aber mit ESP32 funktioniert.
   tdsSensorValue = analogRead(tdsPin);
   tdsVoltage = tdsSensorValue*(3.3/4096.0);
   float compensationCoefficient=1.0+0.02*(tempC-25.0);    //temperature compensation formula: fFinalResult(25^C) = fFinalResult(current)/(1.0+0.02*(fTP-25.0));
   float compVoltage=tdsVoltage/compensationCoefficient;
   tdsValue=(133.42/compVoltage*compVoltage*compVoltage - 255.86*compVoltage*compVoltage + 857.39*compVoltage)*0.5;
-  
+
   // -- electrical conductivity (EC)
   ecVoltage = analogRead(EC_PIN)/4096.0*3300; // 1024.0*5000 für Arduino, 4096*3300 für ESP32
   float rawEC = 1000*ecVoltage/RES2/ECREF;
   float valueTemp = rawEC * kvalue; // 1.0 is the k-value (K = 1)
   if(valueTemp > 2.5){
-    kvalue = 0.65; // was 0.996 (value dependent on sensor calibration)
+    kvalue = 0.65; // war 0.996, jetzt nur noch 0.65 bzw. 0.8
   }else if(valueTemp < 2.0){
-    kvalue = 0.65; // was 0.996 (value dependent on sensor calibration)
+    kvalue = 0.65; // war 0.996, jetzt nur noch 0.65 bzw. 0.8
   }
   float value = rawEC * kvalue;             //calculate the EC value after automatic shift
   value = value / (1.0+0.0185*(tempC-25.0));  //temperature compensation
@@ -319,7 +318,7 @@ void setup() {
   float tb_voltage = sensorValue * (3.3 / 4096.0); // convert analog reading
   float multi = 100.0;
   tb_voltage = (tb_voltage * multi) / multi;
-  if(tb_voltage < 1.83333333325){ // change from 2.5 to 1.83333333325 because instead of max 4.5V we only have max 3.3V (to match ESP32 pins); use 100 Ohm resistance to get the max. output from 4.5V to 3.3V
+  if(tb_voltage < 1.83333333325){ // Wechsel von 2.5 auf 1.83333333325 da wir statt max 4.5V nur noch max 3.3V haben
     ntu = 3000;
   }else{
     //ntu = -1120.4*(tb_voltage*tb_voltage)+ 5742.3*tb_voltage - 4352.9; 
@@ -329,33 +328,53 @@ void setup() {
     ntu = -0.000487 * tb_voltage + 3.29;
   }
 
+  // test values
+  // float temp_C = 17.33;
+  // float pH_corr = 7.02;
+  // float tds_Value = 1350.47; // 376.58
+  // float ec_Value = 137.31;
+  // float DO_val = 6.18;
+  // float ntu_val = 498.84;
+
   // INTEGER CONVERSIONS
-  int int_temp = tempC * 100; //remove comma
-  int int_ph = pHcorr * 100;
-  int int_tds = tdsValue * 100;
-  int int_ec = ecValue * 100;
+  int int_temp = tempC * 100;
+  int int_ph = pHcorr * 100; // Werte zwischen 0 und 14 möglich
+  long long_tds = tdsValue * 100; // long da TDS Werte über 1300 erreichen kann
+  long long_ec = ecValue * 100; // auch long, da bei salzhaltigen Gewässern EC > 1000 µS/cm erreicht wird
   int int_do = DO * 100;
-  int int_ntu = ntu * 100;
+  long long_ntu = ntu * 100; // long, da Trübung bis 4000 NTU erreichen kann
 
   // build payload byte array
   // uint8_t uplinkPayload[3];
   // uplinkPayload[0] = value1;
   // uplinkPayload[1] = highByte(value2);   // See notes for high/lowByte functions
   // uplinkPayload[2] = lowByte(value2);
-  uint8_t uplinkPayload[12];
+
+  uint8_t uplinkPayload[18];
+  // -- temperature
   uplinkPayload[0] = int_temp >> 8;
   uplinkPayload[1] = int_temp;
+  // -- ph value
   uplinkPayload[2] = int_ph >> 8;
   uplinkPayload[3] = int_ph;
-  uplinkPayload[4] = int_tds >> 8;
-  uplinkPayload[5] = int_tds;
-  uplinkPayload[6] = int_ec >> 8;
-  uplinkPayload[7] = int_ec;
-  uplinkPayload[8] = int_do >> 8;
-  uplinkPayload[9] = int_do;
-  uplinkPayload[10] = int_ntu >> 8;
-  uplinkPayload[11] = int_ntu;
-
+  // -- tds ist long, daher mehr shifts
+  uplinkPayload[4] = long_tds >> 24;
+  uplinkPayload[5] = long_tds >> 16;
+  uplinkPayload[6] = long_tds >> 8;
+  uplinkPayload[7] = long_tds;
+  // -- ec ist long, daher mehr shifts
+  uplinkPayload[8] = long_ec >> 24;
+  uplinkPayload[9] = long_ec >> 16;
+  uplinkPayload[10] = long_ec >> 8;
+  uplinkPayload[11] = long_ec;
+  // -- dissolved oxygen (DO)
+  uplinkPayload[12] = int_do >> 8;
+  uplinkPayload[13] = int_do;
+  // -- turbidity is long, daher mehr shifts
+  uplinkPayload[14] = long_ntu >> 24;
+  uplinkPayload[15] = long_ntu >> 16;
+  uplinkPayload[16] = long_ntu >> 8;
+  uplinkPayload[17] = long_ntu;
   
   // perform an uplink
   state = node.sendReceive(uplinkPayload, sizeof(uplinkPayload));    
